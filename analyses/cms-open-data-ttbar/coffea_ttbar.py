@@ -52,6 +52,18 @@ import utils  # contains code for bookkeeping and cosmetics, as well as some boi
 
 logging.getLogger("cabinetry").setLevel(logging.INFO)
 
+import argparse
+
+# Initialize parser
+parser = argparse.ArgumentParser()
+
+# Adding optional argument
+parser.add_argument("--ncores", type=int)
+parser.add_argument("--nfiles", type=int)
+
+# Read arguments from command line
+args = parser.parse_args()
+
 
 # ### Configuration: number of files and data delivery path
 # 
@@ -97,7 +109,7 @@ logging.getLogger("cabinetry").setLevel(logging.INFO)
 ### GLOBAL CONFIGURATION
 
 # input files per process, set to e.g. 10 (smaller number = faster)
-N_FILES_MAX_PER_SAMPLE = 1
+N_FILES_MAX_PER_SAMPLE = args.nfiles or 1
 
 # pipeline to use:
 # - "coffea" for pure coffea setup
@@ -114,6 +126,7 @@ SERVICEX_IGNORE_CACHE = True
 # analysis facility: set to "coffea_casa" for coffea-casa environments, "EAF" for FNAL, "local" for local setups
 AF = "local"
 
+print('N_FILES_MAX_PER_SAMPLE =', N_FILES_MAX_PER_SAMPLE)
 
 # ### Defining our `coffea` Processor
 # 
@@ -346,7 +359,7 @@ class AGCSchema(BaseSchema):
 # In[5]:
 
 
-fileset = utils.construct_fileset(N_FILES_MAX_PER_SAMPLE, use_xcache=False)
+fileset = utils.construct_fileset(N_FILES_MAX_PER_SAMPLE, use_xcache=False, location='/data/ssdext4_agc_data/afalko')
 
 print(f"processes in fileset: {list(fileset.keys())}")
 print(f"\nexample of information in fileset:\n{{\n  'files': [{fileset['ttbar__nominal']['files'][0]}, ...],")
@@ -436,194 +449,104 @@ if PIPELINE == "servicex_databinder":
 
 # In[8]:
 
+if __name__=="__main__":
+    t0 = time.time()
 
-t0 = time.time()
+    if PIPELINE == "coffea":
+        if USE_DASK:
+            executor = processor.DaskExecutor(client=utils.get_client(AF))
+        else:
+            executor = processor.IterativeExecutor()
 
-if PIPELINE == "coffea":
-    if USE_DASK:
-        executor = processor.DaskExecutor(client=utils.get_client(AF))
-    else:
-        executor = processor.IterativeExecutor()
+        from coffea.nanoevents.schemas.schema import auto_schema
+        schema = AGCSchema if PIPELINE == "coffea" else auto_schema
+        run = processor.Runner(executor=executor, schema=schema, savemetrics=True, metadata_cache={})
 
-    from coffea.nanoevents.schemas.schema import auto_schema
-    schema = AGCSchema if PIPELINE == "coffea" else auto_schema
-    run = processor.Runner(executor=executor, schema=schema, savemetrics=True, metadata_cache={})
+        all_histograms, metrics = run(fileset, "events", processor_instance=TtbarAnalysis())
+        all_histograms = all_histograms["hist"]
 
-    all_histograms, metrics = run(fileset, "events", processor_instance=TtbarAnalysis())
-    all_histograms = all_histograms["hist"]
+    elif PIPELINE == "servicex_processor":
+        # in a notebook:
+        pass # all_histograms = await utils.produce_all_histograms(fileset, get_query, TtbarAnalysis, use_dask=USE_DASK, ignore_cache=SERVICEX_IGNORE_CACHE)
 
-elif PIPELINE == "servicex_processor":
-    # in a notebook:
-    # all_histograms = await utils.produce_all_histograms(fileset, get_query, TtbarAnalysis, use_dask=USE_DASK, ignore_cache=SERVICEX_IGNORE_CACHE)
-    pass
-    # as a script:
-    # async def produce_all_the_histograms():
-    #    return await utils.produce_all_histograms(fileset, get_query, TtbarAnalysis, use_dask=USE_DASK, ignore_cache=SERVICEX_IGNORE_CACHE)
-    #
-    # all_histograms = asyncio.run(produce_all_the_histograms())
+        # as a script:
+        # async def produce_all_the_histograms():
+        #    return await utils.produce_all_histograms(fileset, get_query, TtbarAnalysis, use_dask=USE_DASK, ignore_cache=SERVICEX_IGNORE_CACHE)
+        #
+        # all_histograms = asyncio.run(produce_all_the_histograms())
 
-elif PIPELINE == "servicex_databinder":
-    # needs a slightly different schema, not currently implemented
-    raise NotImplementedError("further processing of this method is not currently implemented")
-    
-print(f"\nexecution took {time.time() - t0:.2f} seconds")
+    elif PIPELINE == "servicex_databinder":
+        # needs a slightly different schema, not currently implemented
+        raise NotImplementedError("further processing of this method is not currently implemented")
 
+    print(f"\nexecution took {time.time() - t0:.2f} seconds")
 
-# ### Inspecting the produced histograms
-# 
-# Let's have a look at the data we obtained.
-# We built histograms in two phase space regions, for multiple physics processes and systematic variations.
 
-# In[9]:
+    # ### Inspecting the produced histograms
+    # 
+    # Let's have a look at the data we obtained.
+    # We built histograms in two phase space regions, for multiple physics processes and systematic variations.
 
+    # In[9]:
 
-utils.set_style()
 
-all_histograms[120j::hist.rebin(2), "4j1b", :, "nominal"].stack("process")[::-1].plot(stack=True, histtype="fill", linewidth=1, edgecolor="grey")
-plt.legend(frameon=False)
-plt.title(">= 4 jets, 1 b-tag")
-plt.xlabel("HT [GeV]");
+    utils.set_style()
 
+    all_histograms[120j::hist.rebin(2), "4j1b", :, "nominal"].stack("process")[::-1].plot(stack=True, histtype="fill", linewidth=1, edgecolor="grey")
+    plt.legend(frameon=False)
+    plt.title(">= 4 jets, 1 b-tag")
+    plt.xlabel("HT [GeV]");
 
-# In[10]:
 
+    # In[10]:
 
-all_histograms[:, "4j2b", :, "nominal"].stack("process")[::-1].plot(stack=True, histtype="fill", linewidth=1,edgecolor="grey")
-plt.legend(frameon=False)
-plt.title(">= 4 jets, >= 2 b-tags")
-plt.xlabel("$m_{bjj}$ [Gev]");
 
+    all_histograms[:, "4j2b", :, "nominal"].stack("process")[::-1].plot(stack=True, histtype="fill", linewidth=1,edgecolor="grey")
+    plt.legend(frameon=False)
+    plt.title(">= 4 jets, >= 2 b-tags")
+    plt.xlabel("$m_{bjj}$ [Gev]");
 
-# Our top reconstruction approach ($bjj$ system with largest $p_T$) has worked!
-# 
-# Let's also have a look at some systematic variations:
-# - b-tagging, which we implemented as jet-kinematic dependent event weights,
-# - jet energy variations, which vary jet kinematics, resulting in acceptance effects and observable changes.
-# 
-# We are making of [UHI](https://uhi.readthedocs.io/) here to re-bin.
 
-# In[11]:
+    # Our top reconstruction approach ($bjj$ system with largest $p_T$) has worked!
+    # 
+    # Let's also have a look at some systematic variations:
+    # - b-tagging, which we implemented as jet-kinematic dependent event weights,
+    # - jet energy variations, which vary jet kinematics, resulting in acceptance effects and observable changes.
+    # 
+    # We are making of [UHI](https://uhi.readthedocs.io/) here to re-bin.
 
+    # In[11]:
 
-# b-tagging variations
-all_histograms[120j::hist.rebin(2), "4j1b", "ttbar", "nominal"].plot(label="nominal", linewidth=2)
-all_histograms[120j::hist.rebin(2), "4j1b", "ttbar", "btag_var_0_up"].plot(label="NP 1", linewidth=2)
-all_histograms[120j::hist.rebin(2), "4j1b", "ttbar", "btag_var_1_up"].plot(label="NP 2", linewidth=2)
-all_histograms[120j::hist.rebin(2), "4j1b", "ttbar", "btag_var_2_up"].plot(label="NP 3", linewidth=2)
-all_histograms[120j::hist.rebin(2), "4j1b", "ttbar", "btag_var_3_up"].plot(label="NP 4", linewidth=2)
-plt.legend(frameon=False)
-plt.xlabel("HT [GeV]")
-plt.title("b-tagging variations");
 
+    # b-tagging variations
+    all_histograms[120j::hist.rebin(2), "4j1b", "ttbar", "nominal"].plot(label="nominal", linewidth=2)
+    all_histograms[120j::hist.rebin(2), "4j1b", "ttbar", "btag_var_0_up"].plot(label="NP 1", linewidth=2)
+    all_histograms[120j::hist.rebin(2), "4j1b", "ttbar", "btag_var_1_up"].plot(label="NP 2", linewidth=2)
+    all_histograms[120j::hist.rebin(2), "4j1b", "ttbar", "btag_var_2_up"].plot(label="NP 3", linewidth=2)
+    all_histograms[120j::hist.rebin(2), "4j1b", "ttbar", "btag_var_3_up"].plot(label="NP 4", linewidth=2)
+    plt.legend(frameon=False)
+    plt.xlabel("HT [GeV]")
+    plt.title("b-tagging variations");
 
-# In[12]:
 
+    # In[12]:
 
-# jet energy scale variations
-all_histograms[:, "4j2b", "ttbar", "nominal"].plot(label="nominal", linewidth=2)
-all_histograms[:, "4j2b", "ttbar", "pt_scale_up"].plot(label="scale up", linewidth=2)
-all_histograms[:, "4j2b", "ttbar", "pt_res_up"].plot(label="resolution up", linewidth=2)
-plt.legend(frameon=False)
-plt.xlabel("$m_{bjj}$ [Gev]")
-plt.title("Jet energy variations");
 
+    # jet energy scale variations
+    all_histograms[:, "4j2b", "ttbar", "nominal"].plot(label="nominal", linewidth=2)
+    all_histograms[:, "4j2b", "ttbar", "pt_scale_up"].plot(label="scale up", linewidth=2)
+    all_histograms[:, "4j2b", "ttbar", "pt_res_up"].plot(label="resolution up", linewidth=2)
+    plt.legend(frameon=False)
+    plt.xlabel("$m_{bjj}$ [Gev]")
+    plt.title("Jet energy variations");
 
-# ### Save histograms to disk
-# 
-# We'll save everything to disk for subsequent usage.
-# This also builds pseudo-data by combining events from the various simulation setups we have processed.
 
-# In[13]:
+    # ### Save histograms to disk
+    # 
+    # We'll save everything to disk for subsequent usage.
+    # This also builds pseudo-data by combining events from the various simulation setups we have processed.
 
+    # In[13]:
 
-utils.save_histograms(all_histograms, fileset, "histograms.root")
 
-
-# ### Statistical inference
-# 
-# A statistical model has been defined in `config.yml`, ready to be used with our output.
-# We will use `cabinetry` to combine all histograms into a `pyhf` workspace and fit the resulting statistical model to the pseudodata we built.
-
-# In[14]:
-
-
-config = cabinetry.configuration.load("cabinetry_config.yml")
-cabinetry.templates.collect(config)
-cabinetry.templates.postprocess(config)  # optional post-processing (e.g. smoothing)
-ws = cabinetry.workspace.build(config)
-cabinetry.workspace.save(ws, "workspace.json")
-
-
-# We can inspect the workspace with `pyhf`, or use `pyhf` to perform inference.
-
-# In[15]:
-
-
-get_ipython().system('pyhf inspect workspace.json | head -n 20')
-
-
-# Let's try out what we built: the next cell will perform a maximum likelihood fit of our statistical model to the pseudodata we built.
-
-# In[16]:
-
-
-model, data = cabinetry.model_utils.model_and_data(ws)
-fit_results = cabinetry.fit.fit(model, data)
-
-cabinetry.visualize.pulls(
-    fit_results, exclude="ttbar_norm", close_figure=True, save_figure=False
-)
-
-
-# For this pseudodata, what is the resulting ttbar cross-section divided by the Standard Model prediction?
-
-# In[17]:
-
-
-poi_index = model.config.poi_index
-print(f"\nfit result for ttbar_norm: {fit_results.bestfit[poi_index]:.3f} +/- {fit_results.uncertainty[poi_index]:.3f}")
-
-
-# Let's also visualize the model before and after the fit, in both the regions we are using.
-# The binning here corresponds to the binning used for the fit.
-
-# In[18]:
-
-
-model_prediction = cabinetry.model_utils.prediction(model)
-figs = cabinetry.visualize.data_mc(model_prediction, data, close_figure=True)
-figs[0]["figure"]
-
-
-# In[19]:
-
-
-figs[1]["figure"]
-
-
-# We can see very good post-fit agreement.
-
-# In[20]:
-
-
-model_prediction_postfit = cabinetry.model_utils.prediction(model, fit_results=fit_results)
-figs = cabinetry.visualize.data_mc(model_prediction_postfit, data, close_figure=True)
-figs[0]["figure"]
-
-
-# In[21]:
-
-
-figs[1]["figure"]
-
-
-# ### What is next?
-# 
-# Our next goals for this pipeline demonstration are:
-# - making this analysis even **more feature-complete**,
-# - **addressing performance bottlenecks** revealed by this demonstrator,
-# - **collaborating** with you!
-# 
-# Please do not hesitate to get in touch if you would like to join the effort, or are interested in re-implementing (pieces of) the pipeline with different tools!
-# 
-# Our mailing list is analysis-grand-challenge@iris-hep.org, sign up via the [Google group](https://groups.google.com/a/iris-hep.org/g/analysis-grand-challenge).
+    utils.save_histograms(all_histograms, fileset, f"histograms/coffea-{N_FILES_MAX_PER_SAMPLE}.root")
