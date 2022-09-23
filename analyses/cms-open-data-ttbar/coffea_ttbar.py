@@ -111,6 +111,7 @@ args = parser.parse_args()
 # input files per process, set to e.g. 10 (smaller number = faster)
 N_FILES_MAX_PER_SAMPLE = args.nfiles or 1
 
+N_WORKERS = args.ncores or 64
 # pipeline to use:
 # - "coffea" for pure coffea setup
 # - "servicex_processor" for coffea with ServiceX processor
@@ -359,7 +360,7 @@ class AGCSchema(BaseSchema):
 # In[5]:
 
 
-fileset = utils.construct_fileset(N_FILES_MAX_PER_SAMPLE, use_xcache=False, location='/data/ssdext4_agc_data/afalko')
+fileset = utils.construct_fileset(N_FILES_MAX_PER_SAMPLE, use_xcache=False, location='/data/ssdext4_agc_data_2/afalko')
 
 print(f"processes in fileset: {list(fileset.keys())}")
 print(f"\nexample of information in fileset:\n{{\n  'files': [{fileset['ttbar__nominal']['files'][0]}, ...],")
@@ -454,7 +455,7 @@ if __name__=="__main__":
 
     if PIPELINE == "coffea":
         if USE_DASK:
-            executor = processor.DaskExecutor(client=utils.get_client(AF))
+            executor = processor.DaskExecutor(client=utils.get_client(AF, N_WORKERS))
         else:
             executor = processor.IterativeExecutor()
 

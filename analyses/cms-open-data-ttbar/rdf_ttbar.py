@@ -12,7 +12,6 @@ parser = argparse.ArgumentParser()
 # Adding optional argument
 parser.add_argument("--ncores", type=int)
 parser.add_argument("--nfiles", type=int)
-parser.add_argument("--second_disk")
 parser.add_argument("--startwith", type=int, help='number of first file')
 
 # Read arguments from command line
@@ -91,7 +90,7 @@ class TtbarAnalysis(dict):
 
     def _construct_fileset(self):
         n_files_max_per_sample = self.n_files_max_per_sample
-        with open ('ntuples.json') as f:
+        with open ('merged_nevts.json') as f:
             file_info = json.load(f)
         fileset = {}
         for process in file_info.keys():
@@ -294,7 +293,7 @@ class TtbarAnalysis(dict):
                     
 
 
-disk='/data/ssdext4_agc_data/afalko' if not args.second_disk else '/data/ssdext4_agc_data_2/afalko'
+disk='/data/ssdext4_agc_data_2/afalko' 
 print(f'processing data located at {disk} disk')
 analysisManager = TtbarAnalysis(disk=disk)
 

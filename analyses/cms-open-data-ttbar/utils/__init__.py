@@ -12,7 +12,7 @@ from coffea.processor import servicex
 from servicex import ServiceXDataset
 
 
-def get_client(af="coffea_casa"):
+def get_client(af="coffea_casa", n_threads=64):
     if af == "coffea_casa":
         from dask.distributed import Client
 
@@ -32,8 +32,8 @@ def get_client(af="coffea_casa"):
     elif af == "local":
         from dask.distributed import Client
 
-        client = Client()
-
+        client = Client(n_workers=n_threads, threads_per_worker=1)
+        print(client)
     else:
         raise NotImplementedError(f"unknown analysis facility: {af}")
 
@@ -65,7 +65,7 @@ def construct_fileset(n_files_max_per_sample, location='', use_xcache=False):
     }
 
     # list of files
-    with open("ntuples.json") as f:
+    with open("merged_nevts.json") as f:
         file_info = json.load(f)
 
     # process into "fileset" summarizing all info
