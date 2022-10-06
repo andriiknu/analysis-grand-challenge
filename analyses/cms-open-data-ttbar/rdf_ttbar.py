@@ -41,6 +41,11 @@ N_FILES_MAX_PER_SAMPLE = args.nfiles or 1
 FILE = f'rdf-{N_FILES_MAX_PER_SAMPLE}.root'
 START = args.startwith or 0
 
+disk = '/data/ssdext4_agc_data_2/afalko'
+ntuples = 'merged_nevts.json'
+
+
+
 print(f'you are processing {N_FILES_MAX_PER_SAMPLE} files starting from {START}')
 
 
@@ -90,7 +95,7 @@ class TtbarAnalysis(dict):
 
     def _construct_fileset(self):
         n_files_max_per_sample = self.n_files_max_per_sample
-        with open ('merged_nevts.json') as f:
+        with open (ntuples) as f:
             file_info = json.load(f)
         fileset = {}
         for process in file_info.keys():
@@ -293,7 +298,7 @@ class TtbarAnalysis(dict):
                     
 
 
-disk='/data/ssdext4_agc_data_2/afalko' 
+
 print(f'processing data located at {disk} disk')
 analysisManager = TtbarAnalysis(disk=disk)
 

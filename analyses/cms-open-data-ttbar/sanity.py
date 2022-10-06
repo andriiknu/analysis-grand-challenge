@@ -57,5 +57,11 @@ def get_mismatched (rdf, coffea):
                     raise ValueError('rdf_hist and coffea_hist is Zombie')
     return mismatched
 
-#mism = get_mismatched('rdf100.root', 'histograms100.root')
-#nothing == all right
+if __name__=="__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--nfiles", type=int)
+    args = parser.parse_args()
+    nfiles = args.nfiles or 1
+    get_mismatched(f'histograms/rdf-{nfiles}.root', f'histograms/coffea-{nfiles}.root')
+
