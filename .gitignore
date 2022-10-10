@@ -25,3 +25,7 @@ workshops/agctools2022/statistical-inference/input
 # CMS ttbar
 analyses/cms-open-data-ttbar/workspace.json
 analyses/cms-open-data-ttbar/dask-worker-space
+analyses/cms-open-data-ttbar/helper/*
+!analyses/cms-open-data-ttbar/helper/helper.cpp
+analyses/cms-open-data-ttbar/utils/__pycache__
+analyses/cms-open-data-ttbar/data.json
