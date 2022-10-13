@@ -26,7 +26,7 @@ def download_files(first, number, location, file_list):
             
 executors = []
 
-with open ('ntuples_merged.json') as f:
+with open ('ntuples.json') as f:
     file_info = json.load(f)
 for process in file_info:
     if process == 'data': continue
@@ -35,7 +35,7 @@ for process in file_info:
         size = len(file_info[process][variation]['files'])
 #         p1 = Process(target=download_files, args=(256, 257, '/data/ssdext4_agc_data/afalko', file_list,) )
         if size:
-            p1 = Process(target=download_files, args=(0, 650, '/data/ssdext4_agc_data_2/afalko', file_list,))
+            p1 = Process(target=download_files, args=(0, 35, '/mnt/e/analysis-grand-challenge/datasets/cms-open-data-2015-download', file_list,))
             p1.start();
             executors.append(p1);
 for ex in executors:

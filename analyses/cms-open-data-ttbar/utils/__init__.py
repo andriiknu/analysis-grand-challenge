@@ -55,6 +55,10 @@ def construct_fileset(n_files_max_per_sample, location='', use_xcache=False):
     # using https://atlas-groupdata.web.cern.ch/atlas-groupdata/dev/AnalysisTop/TopDataPreparation/XSection-MC15-13TeV.data
     # for reference
     # x-secs are in pb
+    import os
+    if not os.path.exists(location):
+        print(f'WARNING: {location} does not exist')
+
     xsec_info = {
         "ttbar": 396.87 + 332.97, # nonallhad + allhad, keep same x-sec for all
         "single_top_s_chan": 2.0268 + 1.2676,
@@ -65,7 +69,7 @@ def construct_fileset(n_files_max_per_sample, location='', use_xcache=False):
     }
 
     # list of files
-    with open("merged_nevts.json") as f:
+    with open("ntuples.json") as f:
         file_info = json.load(f)
 
     # process into "fileset" summarizing all info
@@ -78,7 +82,8 @@ def construct_fileset(n_files_max_per_sample, location='', use_xcache=False):
             file_list = file_info[process][variation]["files"]
             if n_files_max_per_sample != -1:
                 file_list = file_list[:n_files_max_per_sample]  # use partial set of samples
-            import os
+           
+
             file_paths = [f["path"] for f in file_list] if not os.path.exists(location)\
                     else [f"{location}/{process}_{variation}/{i}.root" for i in range(len(file_list))]
             if use_xcache:
